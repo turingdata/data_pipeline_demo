@@ -439,7 +439,6 @@ services:
   grafana:
     image: grafana/grafana-enterprise
     container_name: grafana
-    user: admin
     restart: unless-stopped
     ports:
       - '3000:3000'
@@ -451,9 +450,6 @@ services:
 
 # #############DRAFT#####################################
 
-# Reference another docker-compose.yml file
-x-extends:
-  file: ./airflow/docker-compose-airflow.yml
 
 
 
