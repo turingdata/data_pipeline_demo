@@ -1,0 +1,18 @@
+FROM python:latest
+
+ENV PROJECT_DIR=.
+
+RUN mkdir dbt
+ADD /. dbt/
+WORKDIR ${PROJECT_DIR}/dbt/
+
+ENV DBT_PROFILES_DIR=${PROJECT_DIR}/dbt/profile/
+
+RUN pip install --upgrade pip wheel setuptools
+RUN pip install pipenv
+RUN pipenv install --dev
+
+RUN python --version && \
+	pip --version
+
+# RUN pipenv run ./bin/lint-sql.sh

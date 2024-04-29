@@ -1,0 +1,82 @@
+# Reference: https://docs.sqlfluff.com/en/stable/rules.html
+
+[sqlfluff]
+dialect = redshift
+templater = jinja
+encoding = autodetect
+exclude_rules = L001, L029, L034
+
+[sqlfluff:indentation]
+indented_joins = True
+indented_using_on = True
+indented_ctes = True
+template_blocks_indent = True
+
+[sqlfluff:templater]
+unwrap_wrapped_queries = true
+
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = True
+load_macros_from_path = macros
+library_path = dbt_packages
+
+[sqlfluff:rules]
+tab_space_size = 4
+max_line_length = 360
+indent_unit = space
+single_table_references = consistent
+unquoted_identifiers_policy = all
+
+# Indentation not consistent with previous lines
+[sqlfluff:rules:L003]
+hanging_indents = False
+
+# Operators should be surrounded by a single whitespace.
+[sqlfluff:rules:L006]
+
+# Operators should follow a standard for being before/after newlines
+[sqlfluff:rules:L007]
+operator_new_lines = after
+
+# Files must end with a single trailing newline.
+[sqlfluff:rules:L009]
+
+# Inconsistent capitalisation of keywords
+[sqlfluff:rules:L010]
+capitalisation_policy = lower
+# Comma separated list of words to ignore for this rule
+ignore_words = None
+ignore_words_regex = None
+
+# Implicit/explicit aliasing of columns.
+[sqlfluff:rules:L012]
+aliasing = explicit
+
+# Column expression without alias. Use explicit AS clause.
+[sqlfluff:rules:L013]
+allow_scalar = False
+
+# Inconsistent capitalisation of unquoted identifiers
+[sqlfluff:rules:L014]
+extended_capitalisation_policy = lower
+
+# Leading/Trailing comma enforcement.
+[sqlfluff:rules:L019]
+comma_style = leading
+
+# Commas should be followed by a single whitespace unless followed by a comment.
+# This is intentionally placed after rule L019
+[sqlfluff:rules:L008]
+operator_new_lines = after
+
+# Inconsistent capitalisation of function names
+[sqlfluff:rules:L030]
+capitalisation_policy = lower
+
+# Inconsistent capitalisation of boolean/null literal
+[sqlfluff:rules:L040]
+capitalisation_policy = lower
+
+# Do not use special characters in identifiers
+[sqlfluff:rules:L057]
+allow_space_in_identifier = False

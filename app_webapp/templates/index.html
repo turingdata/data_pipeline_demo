@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask SQLAlchemy App</title>
+</head>
+<body>
+    <h1>Latest Trips</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Vehicle ID</th>
+                <th>Trip ID</th>
+                <th>Measurement Sequence</th>
+                <th>Measurement Time</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Fuel Capacity</th>
+                <th>Distance Traveled</th>
+                <th>Fuel Remaining (%)</th>
+                <th>Fuel Remaining (gallon)</th>
+                <th>Color</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trip in data %}
+                <tr>
+                    <td>{{ trip.vehicle_id }}</td>
+                    <td>{{ trip.trip_id }}</td>
+                    <td>{{ trip.measurement_sequence }}</td>
+                    <td>{{ trip.measurement_time }}</td>
+                    <td>{{ trip.latitude }}</td>
+                    <td>{{ trip.longitude }}</td>
+                    <td>{{ trip.fuel_capacity }}</td>
+                    <td>{{ trip.distance_traveled }}</td>
+                    <td>{{ trip.fuel_remaining_percent }}</td>
+                    <td>{{ trip.fuel_remaining_gallon }}</td>
+                    <td>{{ trip.color }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Add a New Trip</h2>
+    <form method="post" action="{{ url_for('submit') }}">
+        <label for="vehicle_id">Vehicle ID:</label>
+        <input type="text" name="vehicle_id" required>
+        <br>
+        <label for="trip_id">Trip ID:</label>
+        <input type="text" name="trip_id" required>
+        <br>
+        <label for="measurement_sequence">Measurement Sequence:</label>
+        <input type="text" name="measurement_sequence" required>
+        <br>
+        <label for="measurement_time">Measurement Time:</label>
+        <input type="datetime" name="measurement_time" required>
+        <br>
+        <label for="latitude">Latitude:</label>
+        <input type="text" name="latitude" required>
+        <br>
+        <label for="longitude">Longitude:</label>
+        <input type="text" name="longitude" required>
+        <br>
+        <label for="fuel_capacity">Fuel Capacity:</label>
+        <input type="text" name="fuel_capacity" required>
+        <br>
+        <label for="distance_traveled">Distance Traveled:</label>
+        <input type="text" name="distance_traveled" required>
+        <br>
+        <label for="fuel_remaining_percent">Fuel Remaining (%):</label>
+        <input type="text" name="fuel_remaining_percent" required>
+        <br>
+        <label for="fuel_remaining_gallon">Fuel Remaining (gallon):</label>
+        <input type="text" name="fuel_remaining_gallon" required>
+        <br>
+        <label for="color">Color:</label>
+        <input type="text" name="color" required>
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>

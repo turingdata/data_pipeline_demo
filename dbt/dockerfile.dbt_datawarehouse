@@ -1,0 +1,58 @@
+
+FROM python as base
+
+# System setup
+RUN apt-get update \
+  && apt-get dist-upgrade -y \
+  && apt-get install -y --no-install-recommends \
+    git \
+    ssh-client \
+    software-properties-common \
+    make \
+    cron \
+    build-essential \
+    ca-certificates \
+    libpq-dev \
+  && apt-get clean \
+  && rm -rf \
+    /var/lib/apt/lists/* \
+    /tmp/* \
+    /var/tmp/*
+
+# Env vars
+ENV PYTHONIOENCODING=utf-8
+ENV LANG=C.UTF-8
+
+# Update python
+RUN python -m pip install --upgrade pip setuptools wheel --no-cache-dir
+
+# Set docker basics
+WORKDIR /dbt
+
+##
+# dbt-postgres
+##
+FROM base as dbt-postgres
+RUN python -m pip install --no-cache-dir dbt-postgres
+
+# Create the cron.log file to capture cron job logs (if you use cron jobs in your app)
+RUN touch /var/log/cron.log
+
+# Ensure entrypoint.sh is executable
+COPY . .
+# Ensure entrypoint.sh is executable
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set the shell script as the entrypoint
+
+ENTRYPOINT ["entrypoint.sh"]
+
+
+# Environment variables
+ENV POSTGRES_USER=admin \
+    POSTGRES_PASSWORD=password \
+    POSTGRES_DB=postgres \
+    POSTGRES_HOST=postgres_for_datawarehouse \
+    POSTGRES_PORT=5432 
+    

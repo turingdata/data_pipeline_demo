@@ -1,0 +1,7 @@
+
+data_s3_raw/.minio.sys/buckets/.bloomcycle.bin/*
+data_s3_raw/.minio.sys/buckets/.usage-cache.bin/*
+data_s3_raw/.minio.sys/buckets/.usage-cache.bin.bkp/
+data_s3_raw/.minio.sys/buckets/.usage.json/*
+data_s3_raw/.minio.sys/buckets/webapp-bucket/.usage-cache.bin/*
+data_s3_raw/.minio.sys/buckets/webapp-bucket/.usage-cache.bin.bkp/*

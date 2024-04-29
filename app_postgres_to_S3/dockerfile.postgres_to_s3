@@ -1,0 +1,75 @@
+
+# Use an official  image as a parent image
+FROM python
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . .
+
+# Update package lists, install necessary packages, and clean up in one RUN to reduce image size
+RUN apt-get update && apt-get install -y \
+    # build-essential \
+    # wget \
+    # curl \
+    # telnet \
+    cron \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+
+# Update pip and install required Python packages
+RUN pip install --upgrade pip && pip install --no-cache-dir boto3 psycopg2-binary
+
+# Debug: Print the current PATH
+RUN echo "Current PATH: $PATH"
+
+# Create the cron.log file to capture cron job logs (if you use cron jobs in your app)
+RUN touch /var/log/cron.log
+
+# Ensure entrypoint.sh is executable
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set the shell script as the entrypoint
+ENTRYPOINT ["entrypoint.sh"]
+
+
+# # Default command to run the Python application
+
+
+# Environment variables
+ENV POSTGRES_USER=admin \
+    POSTGRES_PASSWORD=password \
+    POSTGRES_DB=postgres \
+    POSTGRES_HOST=postgres_for_webapp \
+    POSTGRES_PORT=5432 \
+    BUCKET_NAME=webapp-bucket \
+    AWS_ACCESS_KEY_ID=W3yluwNO8uLQ3TOyOkAx \
+    AWS_SECRET_ACCESS_KEY=DW7RwL64XBAtxni9peK4XuBxBCAte64i2HC1uyaM \
+    AWS_END_POINT=http://landing_zone_s3:9000 \
+    AWS_REGION=us-east-6
+    
+# export POSTGRES_USER=admin && \
+# export POSTGRES_PASSWORD=password && \
+# export POSTGRES_DB=postgres && \
+# export POSTGRES_HOST=postgres_for_webapp && \
+# export POSTGRES_PORT=5432 && \
+# export BUCKET_NAME=webapp-bucket && \
+# export AWS_ACCESS_KEY_ID=W3yluwNO8uLQ3TOyOkAx && \
+# export AWS_SECRET_ACCESS_KEY=DW7RwL64XBAtxni9peK4XuBxBCAte64i2HC1uyaM && \
+# export AWS_END_POINT=http://landing_zone_s3:9000 && \
+# export AWS_REGION=us-east-6
+
+
+# POSTGRES_USER="admin"
+# POSTGRES_PASSWORD="password"
+# POSTGRES_DB="postgres"
+# POSTGRES_HOST="postgres_for_webapp"
+# POSTGRES_PORT=5432
+# BUCKET_NAME="webapp-bucket"
+# AWS_ACCESS_KEY_ID="1TbSQ0fV4tjsorhIscI5"
+# AWS_SECRET_ACCESS_KEY="KA0RnHeturw76bExFvqNH7OF7TmKdRJ0OoDXSpS3"
+# AWS_END_POINT="http://landing_zone_s3:9000"
+# AWS_REGION="us-east-6"

@@ -1,0 +1,8 @@
+#vehicle-dropdown:hover, #vehicle-dropdown:focus {
+    opacity: 1 !important;
+}
+
+#vehicle-dropdown {
+    opacity: 0.2;
+    transition: opacity 0.7s;
+}

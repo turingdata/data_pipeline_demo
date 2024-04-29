@@ -1,0 +1,36 @@
+version: 2
+
+macros:
+
+  - name: create_multiple_ctes_with_ref_function_macro
+    description: '{{ doc("create_multiple_ctes_with_ref_function_macro") }}'               
+    arguments:
+      - name: list_of_table_info_tuples
+        type: list
+        description: List of tuples with the alias as the first item and the dbt table reference as the second item.
+
+
+  - name: test_multiple_column_not_nullness
+    description: '{{ doc("test_multiple_column_not_nullness") }}'             
+    arguments:
+      - name: model, combination_of_columns
+        type: list
+        description: This macro tests nullness for multiple columns at the same time for a given model
+
+
+  - name: test_multiple_column_uniqueness
+    description: '{{ doc("test_multiple_column_uniqueness") }}'
+    arguments:
+      - name: model, combination_of_columns
+        type: list
+        description: This macro tests uniqueness for multiple columns at the same time for a given model
+
+  - name: test_multiple_columns_to_exist
+    description: '{{ doc("test_multiple_columns_to_exist") }}'
+    arguments:
+      - name: model, combination_of_columns
+        type: list
+        description: This macro tests any data type changes of all columns in a model with only one test.
+
+
+

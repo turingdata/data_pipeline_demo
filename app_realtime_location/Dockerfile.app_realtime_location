@@ -1,0 +1,31 @@
+
+# Use an official Python runtime as a parent image
+FROM python
+
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . .
+
+
+# Upgrade pip and install dependencies
+
+
+
+
+RUN pip install --no-cache-dir --upgrade  -r requirements.txt
+
+RUN pip install gunicorn
+
+RUN python - m pip install  gunicorn dash dash-bootstrap-components
+
+# Make port 8050 available to the world outside this container
+EXPOSE 8050
+
+# Define environment variable
+ENV NAME World
+
+#Running your APP and doing some PORT Forwarding
+CMD ["sh", "-c", "gunicorn -b 0.0.0.0:8050 app:server  python app.py"]

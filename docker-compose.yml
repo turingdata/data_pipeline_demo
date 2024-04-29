@@ -1,0 +1,445 @@
+
+
+########################################################################
+
+volumes:
+  datapipeline:
+
+########################################################################3
+
+networks:
+  app_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+
+########################################################################
+
+services:
+
+  postgres_for_webapp:  #This is the database server that represents the datawarehouse of the enterprise . 
+    container_name: database_postgres_for_webapp
+    hostname: postgres_for_webapp
+    build:
+      context: .
+      dockerfile: dockerfile.postgres_webapp
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres 
+    command: ['postgres', '-c', 'wal_level=logical']
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5433:5432"
+    restart: always
+    volumes:
+      - ./data_db_webapp_postgres:/var/lib/postgresql/data
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.2
+
+
+  webapp: #This represents any web application that collects data and stores its data in the 'postgres_for_webapp' which could be any database.
+    container_name: app_webapp
+    build:
+      context: ./app_webapp
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres   
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=postgres_for_webapp
+    ports:
+      - "5001:5000"
+    depends_on:
+      - postgres_for_webapp
+    restart: always
+    volumes:
+      - ./app_webapp:/app
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.3
+
+  app_data_generator: 
+    container_name: app_data_generator
+    build:
+      context: ./app_data_generator
+      dockerfile: Dockerfile.app_data_generator
+    environment:
+      - DATABASE_ENGINE=postgresql
+      - DATABASE_USER=admin
+      - DATABASE_ROOT_PASSWORD=password
+      - DATABASE_NAME=postgres   
+      - DATABASE_HOST=postgres_for_webapp
+      - DATABASE_PORT=5432
+      - BOOTSTRAP_SERVERS=redpanda_server:9092
+    depends_on:
+      - postgres_for_webapp
+      - redpanda_server
+    restart: unless-stopped
+    volumes:
+      - ./app_data_generator:/app
+    # command: ["tail", "-f", "/dev/null"] #for debugging
+    command: ["python", "post_data_to_postgres_and_kafka.py"]
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.4
+
+
+  landing_zone_s3: #This represents an S3 bucket where raw data files will be saved
+    container_name: storage_landing_zone_s3
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    depends_on:
+      - postgres_for_webapp
+      - postgres_for_datawarehouse
+    environment:
+      MINIO_ACCESS_KEY: minio_user
+      MINIO_SECRET_KEY: minio_password
+    volumes:
+      - ./data_s3_raw:/data
+      - ./.config:/root/.minio
+    command: server --console-address ":9001" /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 3s
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.5
+
+
+  app_postgres_to_s3: #This represents a lambda that loads the data to s3 from an application database
+    # image: pg2s3
+    container_name: app_postgres_to_S3
+    build:
+      context: ./app_postgres_to_S3
+      dockerfile: dockerfile.postgres_to_s3
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres   
+      - POSTGRES_HOST=postgres_for_webapp
+      - POSTGRES_PORT=5432
+      - BUCKET_NAME=webapp-bucket
+      - AWS_ACCESS_KEY_ID=GNotw4aO1P6w5rtQmSHR
+      - AWS_SECRET_ACCESS_KEY=BprZP4bmZTBVpxK6ApkLSS3G1v7qYZadYW1bKwyL
+      - AWS_END_POINT=http://172.20.0.5:9000 
+      - AWS_REGION=us-east-6
+    depends_on:
+      postgres_for_webapp:
+        condition: service_healthy
+      landing_zone_s3:
+        condition: service_started
+    stdin_open: true
+    restart: unless-stopped
+    volumes:
+      - ./app_postgres_to_S3:/app
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.6
+
+            
+  postgres_for_datawarehouse:  #This is the database server that represents the datawarehouse of the enterprise . 
+    container_name: database_postgres_for_datawarehouse
+    build:
+      context: .
+      dockerfile: dockerfile.postgres_datawarehouse
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres 
+    command: ['postgres', '-c', 'wal_level=logical']
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5434:5432"
+    restart: always
+    volumes:
+      - ./data_db_dw_postgres:/var/lib/postgresql/data
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.7
+
+
+  app_s3_to_postgres: #This represents a lambda that loads the data to s3 from an application database
+    container_name: app_s3_to_postgres
+    build:
+      context: ./app_s3_to_postgres
+      dockerfile: dockerfile.s3_to_postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres   
+      - POSTGRES_HOST=postgres_for_datawarehouse
+      - POSTGRES_PORT=5432
+      - BUCKET_NAME=webapp-bucket
+      - AWS_ACCESS_KEY_ID=GNotw4aO1P6w5rtQmSHR
+      - AWS_SECRET_ACCESS_KEY=BprZP4bmZTBVpxK6ApkLSS3G1v7qYZadYW1bKwyL
+      - AWS_END_POINT=http://172.20.0.5:9000 
+      - AWS_REGION=us-east-6
+    depends_on:
+      postgres_for_datawarehouse:
+        condition: service_healthy
+      landing_zone_s3:
+        condition: service_started
+    stdin_open: true
+    restart: unless-stopped
+    volumes:
+      - ./app_s3_to_postgres:/app
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.8
+
+
+  redpanda_server: #This is the Redpanda server as a kafka compatible streaming service
+    container_name: redpanda_server
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.6
+    volumes:
+      - ./data_redpanda:/var/lib/redpanda/data
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+    healthcheck:
+      test:
+        ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers'
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers'
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda_server:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda_server:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with eachother internally.
+      - --rpc-addr redpanda_server:33145
+      - --advertise-rpc-addr redpanda_server:33145
+      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
+      - --smp 1
+      # The amount of memory to make available to Redpanda.
+      - --memory 1G
+      # Mode dev-container uses well-known configuration properties for development in containers.
+      - --mode dev-container
+      # enable logs for debugging.
+      - --default-log-level=debug
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.9
+
+  redpanda-init: #This is the instance that starts the kafka service and creates a topic. This service will exit upon execution
+    container_name: initialize_redpanda
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.6
+    depends_on:
+      redpanda_server:
+        condition: service_healthy
+    command: topic create -r 1 -p 1 webapp_topic_trip --brokers redpanda_server:9092 #adjust the broker name and redpanda server address if needed
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.10
+
+  redpanda_console: #This is the GUI for the Redpanda
+    container_name: monitoring_kafka_redpanda_GUI
+    image: docker.redpanda.com/redpandadata/console:v2.3.1
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda_server:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda_server:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda_server:9644"]
+    ports:
+      - 8080:8080
+    depends_on:
+      - redpanda_server
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.11
+
+  debezium:
+    image: debezium/connect:2.4
+    container_name: debezium
+    environment:
+      BOOTSTRAP_SERVERS: redpanda_server:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      # KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      # VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+    depends_on: [redpanda_server, postgres_for_webapp]
+    ports:
+      - 8083:8083
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'curl',
+          '--silent',
+          '--fail',
+          '-X',
+          'GET',
+          'http://localhost:8083/connectors',
+        ]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.12
+
+  debezium_ui:
+    image: quay.io/debezium/debezium-ui
+    platform: linux/amd64
+    restart: always
+    container_name: monitoring_debezium_GUI
+    depends_on:
+      - debezium
+      - redpanda_server
+      - postgres_for_webapp
+    ports:
+      - '8081:8080'
+    environment:
+      KAFKA_CONNECT_URIS: http://debezium:8083
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.13
+  
+
+  debezium-init: #This is the instance creates a connector
+    build:
+      context: ./app_configure_kafkaconnectors
+      dockerfile: dockerfile.configure_kafkaconnectors
+    container_name: initialize_debezium
+    depends_on:
+      - debezium
+      - postgres_for_webapp
+      - redpanda_server
+    command: /bin/sh config_debezium_postgres_connector.sh
+    volumes:
+      - ./app_configure_kafkaconnectors:/app
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.14
+
+  app_realtime_location: #This represents any web application that collects data and stores its data in the 'postgres_for_webapp' which could be any database.
+    container_name: app_realtime_location
+    build:
+      context: ./app_realtime_location
+      dockerfile: Dockerfile.app_realtime_location
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres   
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=postgres_for_webapp
+      - DEFAULT_KAFKA_URL=redpanda_server:9092
+      - BROKER_TOPIC=latest_locations
+      - CONSUMER_GROUO=trips
+    ports:
+      - "18050:8050"
+    depends_on:
+      - postgres_for_webapp
+      - redpanda_server
+    restart: always
+    volumes:
+      - ./app_realtime_location:/app
+    # command: ["tail", "-f", "/dev/null"] #for debugging
+    command: ["python", "app.py"]
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.15
+
+  dbt:
+    build: 
+      context: ./dbt
+      dockerfile: dockerfile.dbt_datawarehouse
+    container_name: dbt_datawarehouse
+    volumes:
+      - ./dbt:/dbt
+    environment:
+      DBT_PROFILES_DIR: /dbt/datawarehouse
+
+    stdin_open: true
+    command: ["tail", "-f", "/dev/null"]
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.16
+
+  pgadmin: #This is the GUI for our postgres database servers. Not necessary but helpful to confirm the changes in the databases.
+    container_name: monitor_db_pgadmin
+    image: dpage/pgadmin4:latest
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.17
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=password 
+    ports:
+      - "5050:80"
+    restart: always
+    volumes:
+      - ./data_pg_admin:/var/lib/pgadmin
+
+  aws:
+    image: amazon/aws-cli
+    container_name: aws-cli
+    command: -c "
+            sleep 2
+            && echo 'This is s a test file' >> test2_data.csv
+            && aws --endpoint-url http://172.20.0.5:9000 s3 rb s3://aws-cli-bucket --force
+            && aws --endpoint-url http://172.20.0.5:9000 s3 mb s3://aws-cli-bucket --region us-east-6
+            && aws --endpoint-url http://172.20.0.5:9000 s3 cp test2_data.csv  s3://aws-cli-bucket/test2_data.csv
+            && tail -f /dev/null"
+    entrypoint: [/bin/bash]
+    volumes:
+      - "./data_aws:/aws"
+    environment:
+      AWS_ACCESS_KEY_ID: "GNotw4aO1P6w5rtQmSHR"
+      AWS_SECRET_ACCESS_KEY: "BprZP4bmZTBVpxK6ApkLSS3G1v7qYZadYW1bKwyL"
+      AWS_END_POINT: http://172.20.0.5:9000 
+    depends_on:
+      - landing_zone_s3
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.18
+
+# #############DRAFT#####################################
+
+
+
+
+# #######################################################
+

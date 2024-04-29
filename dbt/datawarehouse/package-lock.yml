@@ -1,0 +1,8 @@
+packages:
+- package: calogica/dbt_date
+  version: 0.10.1
+- package: MaterializeInc/materialize_dbt_utils
+  version: 0.7.0
+- package: calogica/dbt_expectations
+  version: 0.10.3
+sha1_hash: 191619474ac9c55c879f1f553dccf71fb18fcb22

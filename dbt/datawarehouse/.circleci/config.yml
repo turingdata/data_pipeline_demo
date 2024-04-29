@@ -1,0 +1,70 @@
+version: 2.1
+
+commands:
+  install_pipenv:
+    description: "Install pipenv to manage Python environment"
+    steps:
+      - run:
+          name: Install pipenv
+          command: |
+            pip install --upgrade pip wheel setuptools
+            pip install pipenv
+
+  install_pip_dependencies:
+    description: "Install Python dependencies via pipenv"
+    steps:
+      - run:
+          name: Install dependencies
+          command: pipenv install --dev
+
+  pip_deps_cache_save:
+    description: Save cache of Pipfile dependencies
+    steps:
+      - save_cache:
+          key: deps-{{ checksum "Pipfile.lock" }}
+          paths:
+            - .venv
+            - ~/.pyenv/versions/3.9.13/lib/python3.9/site-packages/
+
+  pip_deps_cache_restore:
+    description: Restores the cache key of Pipfile dependencies
+    steps:
+      - restore_cache:
+          key: deps-{{ checksum "Pipfile.lock" }}
+
+  perform_sql_linting:
+    description: "Lint dbt SQL files"
+    steps:
+      - run:
+          name: Lint SQL files
+          command: |
+            echo "Running sqlfluff"
+            pipenv run ./bin/lint-sql.sh
+
+  setup_pipenv:
+    description: "Install and cache tools to setup dbt Environment"
+    steps:
+      - pip_deps_cache_restore
+      - install_pip_dependencies
+      - pip_deps_cache_save
+
+jobs:
+  sql_linter:
+    docker:
+      - image: cimg/python:3.9.13
+        environment:
+          PIPENV_VENV_IN_PROJECT: true
+
+    steps:
+      - checkout
+
+      - install_pipenv
+
+      - setup_pipenv
+
+      - perform_sql_linting
+
+workflows:
+  kesselrun_dbt:
+    jobs:
+      - sql_linter

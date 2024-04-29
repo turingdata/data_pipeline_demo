@@ -1,0 +1,7 @@
+packages:
+  - package: calogica/dbt_date
+    version: 0.10.1
+  - package: MaterializeInc/materialize_dbt_utils
+    version: 0.7.0
+  - package: calogica/dbt_expectations
+    version: 0.10.3

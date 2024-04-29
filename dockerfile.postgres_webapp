@@ -1,0 +1,4 @@
+
+FROM debezium/postgres:16
+
+COPY ./init_postgres_webapp.sql /docker-entrypoint-initdb.d/
