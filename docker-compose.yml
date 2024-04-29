@@ -436,7 +436,24 @@ services:
       app_network:
         ipv4_address: 172.20.0.18
 
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    user: admin
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./data_grafana:/var/lib/grafana
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.19
+
 # #############DRAFT#####################################
+
+# Reference another docker-compose.yml file
+x-extends:
+  file: ./airflow/docker-compose-airflow.yml
 
 
 
