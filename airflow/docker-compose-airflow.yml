@@ -85,6 +85,7 @@ x-airflow-common:
     postgres:
       condition: service_healthy
 
+
 services:
   postgres:
     container_name: postgres_for_airflow
@@ -285,3 +286,5 @@ services:
 
 volumes:
   postgres-db-volume:
+
+
