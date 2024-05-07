@@ -281,7 +281,7 @@ services:
             enabled: true
             urls: ["http://redpanda_server:9644"]
     ports:
-      - 8080:8080
+      - 18080:8080
     depends_on:
       - redpanda_server
     networks:
@@ -450,9 +450,20 @@ services:
 
 # #############DRAFT#####################################
 
+  airflow:
+    image: apache/airflow
+    container_name: airflow
+    ports: 
+      - '18088:8080'
+    networks:
+      app_network:
+        ipv4_address: 172.20.0.20
+    command: ["airflow", "standalone"]
 
 
-
+# airflow scheduler
+# airflow webserver
+# airflow standalone
 
 # #######################################################
 
