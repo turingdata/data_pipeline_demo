@@ -164,6 +164,7 @@ cython_debug/
 data_db_dw_postgres/
 data_db_webapp_postgres/
 data_redpanda/
+data_grafana/
 # data_s3_raw/
 # data_pg_admin/
 .venv*/
@@ -174,3 +175,4 @@ data_s3_raw/.minio.sys/buckets/
 
 dbt/datawarehouse/target/
 
+data_grafana/grafana.db
