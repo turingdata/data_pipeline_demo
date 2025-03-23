@@ -1,4 +1,4 @@
-Welcome to Allied World
+Welcome to a company
 -----------------------
 
 We take pride in the products we build and embrace the following:
